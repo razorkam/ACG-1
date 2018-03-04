@@ -16,8 +16,8 @@ class Camera(object):
   
   def __init__(self, a_pos   = np.array([+0.0, +0.0, +0.0], dtype = np.float32),
                      a_up    = np.array([+0.0, +1.0, +0.0], dtype = np.float32),
-                     a_front = np.array([+0.0, +0.0, -1.0], dtype = np.float32),
-                     a_speed = 3.0, a_mouse_sensitivity = 0.1):
+                     a_front = np.array([+0.0, -1.0, 0.0], dtype = np.float32),
+                     a_speed = 10.0, a_mouse_sensitivity = 0.1):
     self.move_speed = a_speed
     self.pos = a_pos
     self.up = a_up
