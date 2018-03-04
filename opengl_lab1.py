@@ -19,7 +19,7 @@ from OpenGL.GL import (GL_ARRAY_BUFFER, GL_COLOR_BUFFER_BIT,
                        GL_NO_ERROR, GL_INVALID_ENUM, GL_INVALID_VALUE, GL_INVALID_OPERATION, GL_STACK_OVERFLOW,
                        GL_TEXTURE_2D, GL_TEXTURE0, GL_TEXTURE1,
                        GL_STACK_UNDERFLOW, GL_OUT_OF_MEMORY, GL_TABLE_TOO_LARGE, GL_PRIMITIVE_RESTART,
-                       GL_TRIANGLE_STRIP, GL_RGB, GL_UNSIGNED_BYTE,
+                       GL_TRIANGLE_STRIP, GL_TRIANGLE_FAN, GL_RGB, GL_UNSIGNED_BYTE,
                        glAttachShader, glBindBuffer, glBindVertexArray, glDrawElements,
                        glBufferData, glClear, glClearColor, glDrawArrays, glEnableVertexAttribArray,
                        glGenBuffers, glGenVertexArrays, glGetAttribLocation, glDeleteVertexArrays,
@@ -302,6 +302,82 @@ def create_surface(rows, cols, size, fun, gen_textures):
 
 
 
+def uv_sphere( mers, pars ):
+    vertices_list = []
+    vertices_list.append([0.0, 1.0, 0.0])
+    tri_ind = []
+
+    for i in range(pars):
+        polar = math.pi * (i+1) / pars
+        sp = math.sin(polar)
+        cp = math.cos(polar)
+        for j in range(mers):
+            azimuth = 2.0 * math.pi * j / mers
+            sa = math.sin(azimuth)
+            ca = math.cos(azimuth)
+            x = sp * ca
+            y = cp
+            z = sp * sa
+            vertices_list.append([x, y, z])
+
+    vertices_list.append([0.0, -1.0, 0.0])
+
+    for i in range(mers):
+        a = i+1
+        b = (i+1) % mers + 1
+        tri_ind.append( 0 )
+        tri_ind.append( b )
+        tri_ind.append( a )
+
+
+    for j in range(pars-2):
+        aStart = j * mers + 1
+        bStart = (j + 1) * mers + 1
+        for i in range(mers):
+            a = aStart + i
+            a1 = aStart + (i+1) % mers
+            b = bStart + i
+            b1 = bStart + (i+1) % mers
+
+            tri_ind.append(a)
+            tri_ind.append(a1)
+            tri_ind.append(b1)
+            tri_ind.append(a)
+            tri_ind.append(b1)
+            tri_ind.append(b)
+
+
+    for i in range(mers):
+        a = i + mers * (pars-2) + 1
+        b = (i+1) % mers + mers * (pars-2) + 1
+        tri_ind.append( len(vertices_list) - 1 )
+        tri_ind.append(a)
+        tri_ind.append(b)
+
+
+    vertices_vec = np.array(vertices_list, dtype=np.float32)
+    indices_vec = np.array(tri_ind, dtype=np.uint32)
+
+    vao = glGenVertexArrays(1)
+    vbo_vertices = glGenBuffers(1)
+    vbo_indices = glGenBuffers(1)
+
+    glBindVertexArray(vao)
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices)
+    glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(vertices_vec), vertices_vec.flatten(), GL_STATIC_DRAW)  #
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+    glEnableVertexAttribArray(0)
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices)
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(indices_vec), indices_vec.flatten(),
+                 GL_STATIC_DRAW)
+
+    glBindVertexArray(0)
+
+    return (vao, indices_vec.size)
+
+
 
 def main():
     global width
@@ -344,17 +420,20 @@ def main():
     (fun_vao2, ind_fun2) = create_surface(100, 100, surface_size, fun2, False)
     (fun_vao3, ind_fun3) = create_surface(100, 100, surface_size, fun3, False)
     (heightmap_vao, ind_hm) = create_surface(100,100, surface_size, heightmap_dummy_fun, True)
+    (sphere_vao, sphere_ind) = uv_sphere(22, 11)
 
     fun_shader_sources = [(GL_VERTEX_SHADER, "shaders/functions.vert"), (GL_FRAGMENT_SHADER, "shaders/functions.frag")]
 
     fun_program = ShaderProgram(fun_shader_sources)
 
     hm_shader_sources = [(GL_VERTEX_SHADER, "shaders/heightmap.vert"), (GL_FRAGMENT_SHADER, "shaders/heightmap.frag")]
-    # hm_shader_sources = [(GL_VERTEX_SHADER, "shaders/functions.vert"), (GL_FRAGMENT_SHADER, "shaders/functions.frag")]
 
     hm_program = ShaderProgram(hm_shader_sources)
 
     hm_texture = read_texture("1.jpg")
+
+    sphere_shader_sources = [(GL_VERTEX_SHADER, "shaders/sphere.vert"), (GL_FRAGMENT_SHADER, "shaders/sphere.frag")]
+    sphere_program = ShaderProgram(sphere_shader_sources)
 
     check_gl_errors()
 
@@ -398,6 +477,16 @@ def main():
         glUniformMatrix4fv(fun_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
         glBindVertexArray(fun_vao3)
         glDrawElements(GL_TRIANGLE_STRIP, ind_fun3, GL_UNSIGNED_INT, None)
+
+        sphere_program.bindProgram()
+
+        sph_scale = 10
+        model = scaleM4x4(np.array([sph_scale,sph_scale,sph_scale]))
+        glUniformMatrix4fv(sphere_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
+        glUniformMatrix4fv(sphere_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
+        glUniformMatrix4fv(sphere_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
+        glBindVertexArray(sphere_vao)
+        glDrawElements(GL_TRIANGLES, sphere_ind, GL_UNSIGNED_INT, None)
 
         hm_program.bindProgram()
 
