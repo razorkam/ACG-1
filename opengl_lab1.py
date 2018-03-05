@@ -161,7 +161,12 @@ def mousemove_callback(window, xpos, ypos):
         camera.process_mouse(xoffset, yoffset, True)
 
 
+sphere_radius = 10.0
+
 def doCameraMovement(camera=Camera(), delta_time=0.0):
+
+    global sphere_radius
+
     if (keys[glfw.KEY_W] == 1):
         camera.process_keyboard("forward", delta_time)
     if (keys[glfw.KEY_A] == 1):
@@ -170,6 +175,10 @@ def doCameraMovement(camera=Camera(), delta_time=0.0):
         camera.process_keyboard("backward", delta_time)
     if (keys[glfw.KEY_D] == 1):
         camera.process_keyboard("right", delta_time)
+    if (keys[glfw.KEY_Q] == 1):
+        sphere_radius += 0.5
+    if (keys[glfw.KEY_E] == 1):
+        sphere_radius -= 0.5
 
 
 def create_surface(rows, cols, size, fun, gen_textures):
@@ -354,6 +363,32 @@ def uv_sphere( mers, pars ):
         tri_ind.append(a)
         tri_ind.append(b)
 
+    # normals_vec = np.zeros((len(vertices_list) / 3, 3), dtype=np.float32)
+
+    tr_i = 0
+
+    for i in range(0, len(vertices_list) - 2, 3):
+
+        # A = vertices_list[i]
+        # B = vertices_list[i+1]
+        # C = vertices_list[i+2]
+        #
+        #
+        # edge1A = normalize(B - A)
+        # edge2A = normalize(C - A)
+
+        # face_normal = np.cross(edge1A, edge2A)
+
+        # normals_vec[faces[i, 0]] += face_normal
+        # normals_vec[faces[i, 1]] += face_normal
+        # normals_vec[faces[i, 2]] += face_normal
+
+        tr_i += 1
+
+    #
+    # for i in range(0, normals_vec.shape[0]):
+    #     normals_vec[i] = normalize(normals_vec[i])
+
 
     vertices_vec = np.array(vertices_list, dtype=np.float32)
     indices_vec = np.array(tri_ind, dtype=np.uint32)
@@ -480,9 +515,10 @@ def main():
 
         sphere_program.bindProgram()
 
-        sph_scale = 10
-        model = scaleM4x4(np.array([sph_scale,sph_scale,sph_scale]))
-        glUniformMatrix4fv(sphere_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
+        sph_scale = scaleM4x4(np.array([sphere_radius, sphere_radius, sphere_radius]))
+        sph_translate = translateM4x4(np.array([0.0, 0.0, 2.0 * surface_size]))
+
+        glUniformMatrix4fv(sphere_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(sph_translate + sph_scale).flatten())
         glUniformMatrix4fv(sphere_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
         glUniformMatrix4fv(sphere_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
         glBindVertexArray(sphere_vao)
