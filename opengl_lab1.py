@@ -181,6 +181,52 @@ def doCameraMovement(camera=Camera(), delta_time=0.0):
         sphere_radius -= 0.5
 
 
+def normals_for_triangles(indices_vec, vertices_vec, size ):
+    currFace = 1
+    faces_list = []
+    normals_vec = np.zeros((size, 3), dtype=np.float32)
+
+    for i in range(0, indices_vec.size - 2, 3):
+        index0 = indices_vec[i]
+        index1 = indices_vec[i + 1]
+        index2 = indices_vec[i + 2]
+
+        face = np.array([0, 0, 0], dtype=np.int32)
+        # if (index0 != primRestart) and (index1 != primRestart) and (index2 != primRestart):
+
+        face[0] = index0
+        face[1] = index1
+        face[2] = index2
+
+        currFace += 1
+
+        faces_list.append(face)
+
+    faces = np.reshape(faces_list, newshape=(len(faces_list), 3))
+
+    for i in range(0, faces.shape[0]):
+        A = np.array([vertices_vec[faces[i, 0], 0], vertices_vec[faces[i, 0], 1], vertices_vec[faces[i, 0], 2]],
+                     dtype=np.float32)
+        B = np.array([vertices_vec[faces[i, 1], 0], vertices_vec[faces[i, 1], 1], vertices_vec[faces[i, 1], 2]],
+                     dtype=np.float32)
+        C = np.array([vertices_vec[faces[i, 2], 0], vertices_vec[faces[i, 2], 1], vertices_vec[faces[i, 2], 2]],
+                     dtype=np.float32)
+
+        edge1A = normalize(B - A)
+        edge2A = normalize(C - A)
+
+        face_normal = np.cross(edge1A, edge2A)
+
+        normals_vec[faces[i, 0]] += face_normal
+        normals_vec[faces[i, 1]] += face_normal
+        normals_vec[faces[i, 2]] += face_normal
+
+    for i in range(0, normals_vec.shape[0]):
+        normals_vec[i] = normalize(normals_vec[i])
+
+    return normals_vec
+
+
 def create_surface(rows, cols, size, fun, gen_textures):
 
     normals_vec = np.zeros((rows * cols, 3), dtype=np.float32)
@@ -363,39 +409,19 @@ def uv_sphere( mers, pars ):
         tri_ind.append(a)
         tri_ind.append(b)
 
-    # normals_vec = np.zeros((len(vertices_list) / 3, 3), dtype=np.float32)
-
-    tr_i = 0
-
-    for i in range(0, len(vertices_list) - 2, 3):
-
-        # A = vertices_list[i]
-        # B = vertices_list[i+1]
-        # C = vertices_list[i+2]
-        #
-        #
-        # edge1A = normalize(B - A)
-        # edge2A = normalize(C - A)
-
-        # face_normal = np.cross(edge1A, edge2A)
-
-        # normals_vec[faces[i, 0]] += face_normal
-        # normals_vec[faces[i, 1]] += face_normal
-        # normals_vec[faces[i, 2]] += face_normal
-
-        tr_i += 1
-
-    #
-    # for i in range(0, normals_vec.shape[0]):
-    #     normals_vec[i] = normalize(normals_vec[i])
 
 
     vertices_vec = np.array(vertices_list, dtype=np.float32)
     indices_vec = np.array(tri_ind, dtype=np.uint32)
 
+    normals_vec = normals_for_triangles(indices_vec, vertices_vec, indices_vec.size//3)
+
+
     vao = glGenVertexArrays(1)
     vbo_vertices = glGenBuffers(1)
     vbo_indices = glGenBuffers(1)
+    vbo_normals = glGenBuffers(1)
+
 
     glBindVertexArray(vao)
 
@@ -403,6 +429,11 @@ def uv_sphere( mers, pars ):
     glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(vertices_vec), vertices_vec.flatten(), GL_STATIC_DRAW)  #
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
     glEnableVertexAttribArray(0)
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_normals)
+    glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(normals_vec), normals_vec.flatten(), GL_STATIC_DRAW)  #
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
+    glEnableVertexAttribArray(1)
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(indices_vec), indices_vec.flatten(),
