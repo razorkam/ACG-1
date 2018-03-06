@@ -30,7 +30,7 @@ from OpenGL.GL import (GL_ARRAY_BUFFER, GL_COLOR_BUFFER_BIT,
                        glTexParameteri, glActiveTexture, glUniform1i)
 
 from OpenGL.arrays import ArrayDatatype
-from math import sin, sqrt
+from math import sin, sqrt, cos
 
 from shader_program import ShaderProgram
 from camera import Camera
@@ -443,6 +443,74 @@ def uv_sphere( mers, pars ):
 
     return (vao, indices_vec.size)
 
+def uv_torus(inner_radius, outer_radius, num_sides, num_faces):
+    vertices_list = []
+    tri_ind = []
+    normal_list = []
+
+    t = 0.0
+    s = 0
+
+
+    t_incr = 1.0 / float(num_faces)
+    s_incr = 1.0 / float(num_sides)
+
+    for side_count in range(0, num_sides + 1):
+        s += s_incr
+        cos2ps = float(math.cos(2.0 * math.pi * s ))
+        sin2ps = float(math.sin(2.0 * math.pi * s))
+
+        for face_count in range(0, num_faces + 1):
+            t += t_incr
+            cos2pt = float(math.cos(2.0 * math.pi * t))
+            sin2pt = float(math.sin(2.0 * math.pi * t))
+
+            x = (outer_radius + inner_radius * cos2pt) * cos2ps
+            y = (outer_radius + inner_radius * cos2pt) * sin2ps
+            z = inner_radius * sin2pt
+            vertices_list.append([x, y, z])
+
+
+    for side_count in range(0, num_sides):
+        for face_count in range(0, num_faces):
+            v0 = ((side_count * (num_faces + 1)) + face_count);
+            v1 = (((side_count + 1) * (num_faces + 1)) + face_count);
+            v2 = (((side_count + 1) * (num_faces + 1)) + (face_count + 1));
+            v3 = ((side_count * (num_faces + 1)) + (face_count + 1));
+
+
+            tri_ind.append(v0)
+            tri_ind.append(v1)
+            tri_ind.append(v2)
+
+            tri_ind.append(v0)
+            tri_ind.append(v2)
+            tri_ind.append(v3)
+
+
+
+
+    vertices_vec = np.array(vertices_list, dtype=np.float32)
+    indices_vec = np.array(tri_ind, dtype=np.uint32)
+
+    vao = glGenVertexArrays(1)
+    vbo_vertices = glGenBuffers(1)
+    vbo_indices = glGenBuffers(1)
+
+    glBindVertexArray(vao)
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices)
+    glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(vertices_vec), vertices_vec.flatten(), GL_STATIC_DRAW)  #
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+    glEnableVertexAttribArray(0)
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices)
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(indices_vec), indices_vec.flatten(),
+                 GL_STATIC_DRAW)
+
+    glBindVertexArray(0)
+
+    return (vao, indices_vec.size)
 
 
 def main():
@@ -487,6 +555,8 @@ def main():
     (fun_vao3, ind_fun3) = create_surface(100, 100, surface_size, fun3, False)
     (heightmap_vao, ind_hm) = create_surface(100,100, surface_size, heightmap_dummy_fun, True)
     (sphere_vao, sphere_ind) = uv_sphere(22, 11)
+
+    (torus_vao, torus_ind) = uv_torus(5, 10, 100, 100)
 
     fun_shader_sources = [(GL_VERTEX_SHADER, "shaders/functions.vert"), (GL_FRAGMENT_SHADER, "shaders/functions.frag")]
 
@@ -554,6 +624,10 @@ def main():
         glUniformMatrix4fv(sphere_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
         glBindVertexArray(sphere_vao)
         glDrawElements(GL_TRIANGLES, sphere_ind, GL_UNSIGNED_INT, None)
+        glBindVertexArray(torus_vao)
+        glDrawElements(GL_TRIANGLES, torus_ind, GL_UNSIGNED_INT, None)
+
+
 
         hm_program.bindProgram()
 
