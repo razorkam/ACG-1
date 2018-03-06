@@ -1,15 +1,8 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Feb  5 16:00:41 2018
-
-@author: vsan
-"""
-
 import numpy as np
 from math import cos, sin, tan
 
 
-DEG_TO_RAD = 0.01745329251; # 3.14159265358979323846 / 180.0;
+DEG_TO_RAD = 0.01745329251;
 
 def identityM4x4():
     mat = np.array([[1.0, 0.0, 0.0, 0.0],
@@ -121,9 +114,5 @@ def projectionMatrix(fovy, aspect, zNear, zFar):
   
   return matrix
 
-                
-#A = identityM4x4()
-#B = rotateYM4x4(45 * DEG_TO_RAD)
-#C = np.dot(B, A)
 
 

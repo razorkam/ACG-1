@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Feb 24 12:11:48 2018
-
-@author: vsan
-"""
-
 import glfw
 import math
 import numpy as np
@@ -470,6 +463,11 @@ def uv_torus(inner_radius, outer_radius, num_sides, num_faces):
             z = inner_radius * sin2pt
             vertices_list.append([x, y, z])
 
+            x_norm = cos2ps * cos2pt;
+            y_norm = sin2ps * cos2pt;
+            z_norm = sin2pt;
+            normal_list.append([x_norm, y_norm, z_norm])
+
 
     for side_count in range(0, num_sides):
         for face_count in range(0, num_faces):
@@ -490,12 +488,16 @@ def uv_torus(inner_radius, outer_radius, num_sides, num_faces):
 
 
 
+
+
     vertices_vec = np.array(vertices_list, dtype=np.float32)
     indices_vec = np.array(tri_ind, dtype=np.uint32)
+    normal_vec = np.array(normal_list, dtype=np.float32)
 
     vao = glGenVertexArrays(1)
     vbo_vertices = glGenBuffers(1)
     vbo_indices = glGenBuffers(1)
+    vbo_normals = glGenBuffers(1)
 
     glBindVertexArray(vao)
 
@@ -507,6 +509,11 @@ def uv_torus(inner_radius, outer_radius, num_sides, num_faces):
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(indices_vec), indices_vec.flatten(),
                  GL_STATIC_DRAW)
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_normals)
+    glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(normal_vec), normal_vec.flatten(), GL_STATIC_DRAW)  #
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
+    glEnableVertexAttribArray(1)
 
     glBindVertexArray(0)
 

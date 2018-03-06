@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Feb 24 12:31:27 2018
-
-@author: vsan
-"""
-
 import os
 from OpenGL.GL import (glCreateProgram, glLinkProgram, glDeleteProgram, 
                        glCreateShader, glShaderSource, glCompileShader, glAttachShader, glDeleteShader, 
@@ -13,8 +6,6 @@ from OpenGL.GL import (glCreateProgram, glLinkProgram, glDeleteProgram,
                        GL_FLOAT, GL_TRUE, GL_FALSE, GL_COMPILE_STATUS, GL_LINK_STATUS, GL_VERTEX_SHADER,
                        GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER, GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER,
                        GL_COMPUTE_SHADER)
-
-# this class is needed to create shader program and attach shaders to it. 
 
 class ShaderProgram(object):
   
