@@ -43,6 +43,23 @@ camera = Camera(a_pos=np.array([0.0, 50.0, 50.0], dtype=np.float32))
 
 from inspect import getframeinfo, stack
 
+def bind_buffer(vbo_vertices, vertices_vec, vbo_normals, normals_vec, vbo_indices, indices_vec):
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices)
+    glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(vertices_vec), vertices_vec.flatten(), GL_STATIC_DRAW)  #
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+    glEnableVertexAttribArray(0)
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_normals)
+    glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(normals_vec), normals_vec.flatten(), GL_STATIC_DRAW)  #
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
+    glEnableVertexAttribArray(1)
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices)
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(indices_vec), indices_vec.flatten(),
+                 GL_STATIC_DRAW)
+    pass
+
+
 
 def check_gl_errors():
     caller = getframeinfo(stack()[1][0])
@@ -320,15 +337,7 @@ def create_surface(rows, cols, size, fun, gen_textures):
 
     glBindVertexArray(vao)
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices)
-    glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(vertices_vec), vertices_vec.flatten(), GL_STATIC_DRAW)  #
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
-    glEnableVertexAttribArray(0)
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_normals)
-    glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(normals_vec), normals_vec.flatten(), GL_STATIC_DRAW)  #
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
-    glEnableVertexAttribArray(1)
+    bind_buffer(vbo_vertices, vertices_vec, vbo_normals, normals_vec, vbo_indices, indices_vec)
 
     if gen_textures:
         glBindBuffer(GL_ARRAY_BUFFER, vbo_texcoords)
@@ -337,9 +346,7 @@ def create_surface(rows, cols, size, fun, gen_textures):
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, None)
         glEnableVertexAttribArray(2)
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices)
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(indices_vec), indices_vec.flatten(),
-                 GL_STATIC_DRAW);
+
 
     glEnable(GL_PRIMITIVE_RESTART)
     glPrimitiveRestartIndex(primRestart)
@@ -418,19 +425,7 @@ def uv_sphere( mers, pars ):
 
     glBindVertexArray(vao)
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices)
-    glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(vertices_vec), vertices_vec.flatten(), GL_STATIC_DRAW)  #
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
-    glEnableVertexAttribArray(0)
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_normals)
-    glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(normals_vec), normals_vec.flatten(), GL_STATIC_DRAW)  #
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
-    glEnableVertexAttribArray(1)
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices)
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(indices_vec), indices_vec.flatten(),
-                 GL_STATIC_DRAW)
+    bind_buffer(vbo_vertices, vertices_vec, vbo_normals, normals_vec, vbo_indices, indices_vec)
 
     glBindVertexArray(0)
 
@@ -492,7 +487,7 @@ def uv_torus(inner_radius, outer_radius, num_sides, num_faces):
 
     vertices_vec = np.array(vertices_list, dtype=np.float32)
     indices_vec = np.array(tri_ind, dtype=np.uint32)
-    normal_vec = np.array(normal_list, dtype=np.float32)
+    normals_vec = np.array(normal_list, dtype=np.float32)
 
     vao = glGenVertexArrays(1)
     vbo_vertices = glGenBuffers(1)
@@ -501,19 +496,7 @@ def uv_torus(inner_radius, outer_radius, num_sides, num_faces):
 
     glBindVertexArray(vao)
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices)
-    glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(vertices_vec), vertices_vec.flatten(), GL_STATIC_DRAW)  #
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
-    glEnableVertexAttribArray(0)
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices)
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(indices_vec), indices_vec.flatten(),
-                 GL_STATIC_DRAW)
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_normals)
-    glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(normal_vec), normal_vec.flatten(), GL_STATIC_DRAW)  #
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
-    glEnableVertexAttribArray(1)
+    bind_buffer(vbo_vertices, vertices_vec, vbo_normals, normals_vec, vbo_indices, indices_vec)
 
     glBindVertexArray(0)
 
