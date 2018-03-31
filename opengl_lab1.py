@@ -535,6 +535,31 @@ def uv_torus(inner_radius, outer_radius, num_sides, num_faces):
     return (vao, indices_vec.size)
 
 
+def read_cm_textures(hdr_textures_amount):
+
+    prefix = 'hdr_image_data/00'
+
+    cm_texture_num = 0
+
+    cm_textures = []
+
+    while cm_texture_num < hdr_textures_amount:
+
+        cur_texture_name = prefix
+
+        if cm_texture_num < 10:
+            cur_texture_name += '0'
+
+        cur_texture_name += str(cm_texture_num) + '.exr'
+
+        cur_cm_texture = read_texture(cur_texture_name)
+
+        cm_textures.append(cur_cm_texture)
+        cm_texture_num += 1
+
+    return cm_textures
+
+
 def main():
     global width
     global height
@@ -577,10 +602,10 @@ def main():
     (fun_vao2, ind_fun2) = create_surface(100, 100, surface_size, fun2, False)
     (fun_vao3, ind_fun3) = create_surface(100, 100, surface_size, fun3, False)
     (contour_plot_vao, ind_con) = create_surface(100, 100, surface_size, contour_plot, True)
-    (heightmap_vao, ind_hm) = create_surface(100,100, surface_size, heightmap_dummy_fun, True)
+    (heightmap_vao, ind_hm) = create_surface( 100,100, surface_size, heightmap_dummy_fun, True)
     (sphere_vao, sphere_ind) = uv_sphere(22, 11)
-
     (torus_vao, torus_ind) = uv_torus(5, 10, 100, 100)
+    (cm_vao, ind_cm) = create_surface(100, 100, surface_size, heightmap_dummy_fun, True)
 
     fun_shader_sources = [(GL_VERTEX_SHADER, "shaders/functions.vert"), (GL_FRAGMENT_SHADER, "shaders/functions.frag")]
 
@@ -596,15 +621,28 @@ def main():
 
     contour_plot_program = ShaderProgram(contour_plot_shader_sources)
 
-    contour_plot_texture = read_texture("3.jpg")
+    contour_plot_texture = read_texture("1.jpg")
 
     sphere_shader_sources = [(GL_VERTEX_SHADER, "shaders/sphere.vert"), (GL_FRAGMENT_SHADER, "shaders/sphere.frag")]
     sphere_program = ShaderProgram(sphere_shader_sources)
 
+    cm_shader_sources = [(GL_VERTEX_SHADER, "shaders/colormap.vert"), (GL_FRAGMENT_SHADER, "shaders/colormap.frag")]
+    cm_program = ShaderProgram( cm_shader_sources )
+
     check_gl_errors()
 
     projection = projectionMatrixTransposed(60.0, float(width) / float(height), 1, 1000.0)
-    projection = projectionMatrixTransposed(60.0, float(width) / float(height), 1, 1000.0)
+
+    HDR_TEXTURES_AMOUNT = 33
+
+    cm_textures = read_cm_textures(HDR_TEXTURES_AMOUNT)
+
+    cm_texture_num = 0
+
+    cm_change_counter = 0
+
+    hdr_textures_speed = 6
+
 
     while not glfw.window_should_close(window):
         current_frame = glfw.get_time()
@@ -688,7 +726,27 @@ def main():
         glBindVertexArray(heightmap_vao)
         glDrawElements(GL_TRIANGLE_STRIP, ind_hm, GL_UNSIGNED_INT, None)
 
-        hm_program.unbindProgram()
+        cm_program.bindProgram()
+
+        model = translateM4x4(np.array([1.5 * surface_size, 0.0, -1.5 * surface_size]))
+
+        cur_cm_texture = cm_textures[cm_texture_num % HDR_TEXTURES_AMOUNT]
+
+        bindTexture(1, cur_cm_texture)
+
+        if cm_change_counter % hdr_textures_speed == 0:
+            cm_texture_num += 1
+
+        cm_change_counter += 1
+
+        glUniform1i(cm_program.uniformLocation("tex"), 1)
+        glUniformMatrix4fv(cm_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
+        glUniformMatrix4fv(cm_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
+        glUniformMatrix4fv(cm_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
+        glBindVertexArray(cm_vao)
+        glDrawElements(GL_TRIANGLE_STRIP, ind_cm, GL_UNSIGNED_INT, None)
+
+        cm_program.unbindProgram()
 
         glfw.swap_buffers(window)
 
