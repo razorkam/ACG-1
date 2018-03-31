@@ -2,13 +2,15 @@ import glfw
 import math
 import numpy as np
 from PIL import Image
+import OpenEXR, Imath
 from OpenGL.GL import (GL_ARRAY_BUFFER, GL_COLOR_BUFFER_BIT,
                        GL_FALSE, GL_FLOAT, GL_FRAGMENT_SHADER, GL_RENDERER, GL_SHADING_LANGUAGE_VERSION,
-                       GL_UNSIGNED_INT,
+                       GL_UNSIGNED_INT, GL_RGBA, GL_RGBA32F, GL_RGB32F,
                        GL_STATIC_DRAW, GL_TRIANGLES, GL_TRUE, GL_VENDOR, GL_VERSION, GL_ELEMENT_ARRAY_BUFFER,
                        GL_TEXTURE_BASE_LEVEL, GL_VERTEX_SHADER,
                        GL_DEPTH_TEST, GL_DEPTH_BUFFER_BIT, GL_FRONT_AND_BACK, GL_FILL, GL_LINE, GL_UNPACK_ALIGNMENT,
-                       GL_TEXTURE_MAX_LEVEL,
+                       GL_TEXTURE_MAX_LEVEL, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR,
+                       GL_LINEAR, GL_REPEAT, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T,
                        GL_NO_ERROR, GL_INVALID_ENUM, GL_INVALID_VALUE, GL_INVALID_OPERATION, GL_STACK_OVERFLOW,
                        GL_TEXTURE_2D, GL_TEXTURE0, GL_TEXTURE1,
                        GL_STACK_UNDERFLOW, GL_OUT_OF_MEMORY, GL_TABLE_TOO_LARGE, GL_PRIMITIVE_RESTART,
@@ -91,23 +93,53 @@ def check_gl_errors():
 
 
 def read_texture(filename):
-    try:
-        image = Image.open(filename)
-    except IOError as ex:
-        print('IOError: failed to open texture file %s' % filename)
-        return -1
-    print('opened file: size=', image.size, 'format=', image.format)
-    imageData = np.array(list(image.getdata()), np.uint8)
+    image_data = 0
+    is_hdr = False
+    size = ()
 
-    textureID = glGenTextures(1)
+    if OpenEXR.isOpenExrFile(filename):
+        is_hdr = True
+        img = OpenEXR.InputFile(filename)
+        FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
+        (r, g, b) = ( img.channel(chan, FLOAT) for chan in ('R', 'G', 'B'))
+        dw = img.header()['dataWindow']
+        size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
+
+        r_data = np.fromstring(r, dtype=np.float32)
+        g_data = np.fromstring(g, dtype=np.float32)
+        b_data = np.fromstring(b, dtype=np.float32)
+
+        image_data = np.dstack((r_data, g_data, b_data))
+        img.close()
+
+    else:
+        try:
+            image = Image.open(filename)
+        except IOError as ex:
+            print('IOError: failed to open texture file %s' % filename)
+            return -1
+        print('opened file: size=', image.size, 'format=', image.format)
+        image_data = np.array(list(image.getdata()), np.uint8)
+        size = image.size
+        image.close()
+
+
+    texture_id= glGenTextures(1)
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
-    glBindTexture(GL_TEXTURE_2D, textureID)
+    glBindTexture(GL_TEXTURE_2D, texture_id)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0)
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.size[0], image.size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, imageData)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
 
-    image.close()
-    return textureID
+    if is_hdr:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, size[0], size[1], 0, GL_RGB, GL_FLOAT, image_data)
+    else:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size[0], size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, image_data)
+
+    return texture_id
 
 
 def bindTexture(unit, textureID):
@@ -564,6 +596,7 @@ def main():
     check_gl_errors()
 
     projection = projectionMatrixTransposed(60.0, float(width) / float(height), 1, 1000.0)
+    projection = projectionMatrixTransposed(60.0, float(width) / float(height), 1, 1000.0)
 
     while not glfw.window_should_close(window):
         current_frame = glfw.get_time()
@@ -616,7 +649,6 @@ def main():
         glDrawElements(GL_TRIANGLES, sphere_ind, GL_UNSIGNED_INT, None)
         glBindVertexArray(torus_vao)
         glDrawElements(GL_TRIANGLES, torus_ind, GL_UNSIGNED_INT, None)
-
 
 
         hm_program.bindProgram()
