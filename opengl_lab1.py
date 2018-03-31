@@ -568,6 +568,7 @@ def main():
     fun1 = lambda x, z: math.sin(x+z)
     fun2 = lambda x, z: math.exp(-x*x - z*z)
     fun3 = lambda x, z: (x**2 + z**2) / (x*z)
+    contour_plot = lambda x, z: 0.0
     heightmap_dummy_fun = lambda x, z: 0.0
 
     surface_size = 50
@@ -575,6 +576,7 @@ def main():
     (fun_vao1, ind_fun1) = create_surface(100, 100, surface_size, fun1, False)
     (fun_vao2, ind_fun2) = create_surface(100, 100, surface_size, fun2, False)
     (fun_vao3, ind_fun3) = create_surface(100, 100, surface_size, fun3, False)
+    (contour_plot_vao, ind_con) = create_surface(100, 100, surface_size, contour_plot, True)
     (heightmap_vao, ind_hm) = create_surface(100,100, surface_size, heightmap_dummy_fun, True)
     (sphere_vao, sphere_ind) = uv_sphere(22, 11)
 
@@ -589,6 +591,12 @@ def main():
     hm_program = ShaderProgram(hm_shader_sources)
 
     hm_texture = read_texture("1.jpg")
+
+    contour_plot_shader_sources = [(GL_VERTEX_SHADER, "shaders/contourplot.vert"), (GL_FRAGMENT_SHADER, "shaders/contourplot.frag")]
+
+    contour_plot_program = ShaderProgram(contour_plot_shader_sources)
+
+    contour_plot_texture = read_texture("3.jpg")
 
     sphere_shader_sources = [(GL_VERTEX_SHADER, "shaders/sphere.vert"), (GL_FRAGMENT_SHADER, "shaders/sphere.frag")]
     sphere_program = ShaderProgram(sphere_shader_sources)
@@ -647,9 +655,25 @@ def main():
         glUniformMatrix4fv(sphere_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
         glBindVertexArray(sphere_vao)
         glDrawElements(GL_TRIANGLES, sphere_ind, GL_UNSIGNED_INT, None)
+
+        torus_translate = translateM4x4(np.array([0.0, 0.0, 3.0 * surface_size]))
+        glUniformMatrix4fv(sphere_program.uniformLocation("model"), 1, GL_FALSE,
+                           np.transpose(torus_translate + sph_scale).flatten())
         glBindVertexArray(torus_vao)
         glDrawElements(GL_TRIANGLES, torus_ind, GL_UNSIGNED_INT, None)
 
+        contour_plot_program.bindProgram()
+
+        model = translateM4x4(np.array([-1.5 * surface_size, 0.0, -1.5 * surface_size]))
+
+        bindTexture(0, contour_plot_texture)
+
+        glUniform1i(contour_plot_program.uniformLocation("tex"), 0)
+        glUniformMatrix4fv(contour_plot_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
+        glUniformMatrix4fv(contour_plot_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
+        glUniformMatrix4fv(contour_plot_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
+        glBindVertexArray(contour_plot_vao)
+        glDrawElements(GL_TRIANGLE_STRIP, ind_con, GL_UNSIGNED_INT, None)
 
         hm_program.bindProgram()
 
