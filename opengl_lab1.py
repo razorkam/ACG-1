@@ -29,6 +29,7 @@ from shader_program import ShaderProgram
 from camera import Camera
 from light_math import (projectionMatrixTransposed, identityM4x4, translateM4x4, scaleM4x4,
                         rotateXM4x4, rotateYM4x4, rotateZM4x4, projectionMatrix, normalize)
+from create_surface_module import create_surface
 
 width = 1024
 height = 1024
@@ -237,124 +238,6 @@ def normals_for_triangles(indices_vec, vertices_vec, size ):
     return normals_vec
 
 
-def create_surface(rows, cols, size, fun, gen_textures):
-
-    normals_vec = np.zeros((rows * cols, 3), dtype=np.float32)
-
-    vertices_list = []
-    texcoords_list = []
-    faces_list = []
-    indices_list = []
-
-    for z in range(0, rows):
-        for x in range(0, cols):
-            xx = -size / 2 + x * size / cols
-            zz = -size / 2 + z * size / rows
-
-            try:
-                yy = fun(xx, zz)
-                if yy < -size/2:
-                    yy = -size / 2
-                if yy > size/2:
-                    yy = size / 2
-            except (ArithmeticError, ValueError):
-                yy = 0.0
-
-            vertices_list.append([xx, yy, zz])
-            if gen_textures:
-                texcoords_list.append([x / float(cols - 1), z / float(rows - 1)])
-
-    primRestart = rows * cols
-    vertices_vec = np.array(vertices_list, dtype=np.float32)
-    if gen_textures:
-        texcoords_vec = np.array(texcoords_list, dtype=np.float32)
-
-    for x in range(0, cols - 1):
-        for z in range(0, rows - 1):
-            offset = x * cols + z
-            if z == 0:
-                indices_list.append(offset)
-                indices_list.append(offset + rows)
-                indices_list.append(offset + 1)
-                indices_list.append(offset + rows + 1)
-            else:
-                indices_list.append(offset + 1)
-                indices_list.append(offset + rows + 1)
-                if z == rows - 2:
-                    indices_list.append(primRestart)
-
-    indices_vec = np.array(indices_list, dtype=np.uint32)
-
-    currFace = 1
-    for i in range(0, indices_vec.size - 2):
-        index0 = indices_vec[i]
-        index1 = indices_vec[i + 1]
-        index2 = indices_vec[i + 2]
-
-        face = np.array([0, 0, 0], dtype=np.int32)
-        if (index0 != primRestart) and (index1 != primRestart) and (index2 != primRestart):
-            if currFace % 2 != 0:
-                face[0] = indices_vec[i]
-                face[1] = indices_vec[i + 1]
-                face[2] = indices_vec[i + 2]
-                currFace += 1
-            else:
-                face[0] = indices_vec[i]
-                face[1] = indices_vec[i + 2]
-                face[2] = indices_vec[i + 1]
-                currFace += 1
-
-            faces_list.append(face)
-
-    faces = np.reshape(faces_list, newshape=(len(faces_list), 3))
-
-    for i in range(0, faces.shape[0]):
-        A = np.array([vertices_vec[faces[i, 0], 0], vertices_vec[faces[i, 0], 1], vertices_vec[faces[i, 0], 2]],
-                     dtype=np.float32)
-        B = np.array([vertices_vec[faces[i, 1], 0], vertices_vec[faces[i, 1], 1], vertices_vec[faces[i, 1], 2]],
-                     dtype=np.float32)
-        C = np.array([vertices_vec[faces[i, 2], 0], vertices_vec[faces[i, 2], 1], vertices_vec[faces[i, 2], 2]],
-                     dtype=np.float32)
-
-        edge1A = normalize(B - A)
-        edge2A = normalize(C - A)
-
-        face_normal = np.cross(edge1A, edge2A)
-
-        normals_vec[faces[i, 0]] += face_normal
-        normals_vec[faces[i, 1]] += face_normal
-        normals_vec[faces[i, 2]] += face_normal
-
-    for i in range(0, normals_vec.shape[0]):
-        normals_vec[i] = normalize(normals_vec[i])
-
-    vao = glGenVertexArrays(1)
-    vbo_vertices = glGenBuffers(1)
-    vbo_normals = glGenBuffers(1)
-    if gen_textures:
-        vbo_texcoords = glGenBuffers(1)
-    vbo_indices = glGenBuffers(1)
-
-    glBindVertexArray(vao)
-
-    bind_buffer(vbo_vertices, vertices_vec, vbo_normals, normals_vec, vbo_indices, indices_vec)
-
-    if gen_textures:
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_texcoords)
-        glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(texcoords_vec), texcoords_vec.flatten(),
-                     GL_STATIC_DRAW)  #
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, None)
-        glEnableVertexAttribArray(2)
-
-
-
-    glEnable(GL_PRIMITIVE_RESTART)
-    glPrimitiveRestartIndex(primRestart)
-
-    glBindVertexArray(0)
-
-    return (vao, indices_vec.size)
-
 
 
 def uv_sphere( mers, pars ):
@@ -544,7 +427,7 @@ def main():
     (fun_vao1, ind_fun1) = create_surface(100, 100, surface_size, fun1, False)
     (fun_vao2, ind_fun2) = create_surface(100, 100, surface_size, fun2, False)
     (fun_vao3, ind_fun3) = create_surface(100, 100, surface_size, fun3, False)
-    (contour_plot_vao, ind_con) = create_surface(100, 100, surface_size, contour_plot, True)
+    (contour_plot_vao, ind_con) = create_surface(100, 100, surface_size, 0, False, True)
     (heightmap_vao, ind_hm) = create_surface(100,100, surface_size, heightmap_dummy_fun, True)
     (sphere_vao, sphere_ind) = uv_sphere(22, 11)
 
@@ -563,8 +446,6 @@ def main():
     contour_plot_shader_sources = [(GL_VERTEX_SHADER, "shaders/contourplot.vert"), (GL_FRAGMENT_SHADER, "shaders/contourplot.frag")]
 
     contour_plot_program = ShaderProgram(contour_plot_shader_sources)
-
-    contour_plot_texture = read_texture("3.jpg")
 
     sphere_shader_sources = [(GL_VERTEX_SHADER, "shaders/sphere.vert"), (GL_FRAGMENT_SHADER, "shaders/sphere.frag")]
     sphere_program = ShaderProgram(sphere_shader_sources)
@@ -633,9 +514,6 @@ def main():
 
         model = translateM4x4(np.array([-1.5 * surface_size, 0.0, -1.5 * surface_size]))
 
-        bindTexture(0, contour_plot_texture)
-
-        glUniform1i(contour_plot_program.uniformLocation("tex"), 0)
         glUniformMatrix4fv(contour_plot_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
         glUniformMatrix4fv(contour_plot_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
         glUniformMatrix4fv(contour_plot_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
