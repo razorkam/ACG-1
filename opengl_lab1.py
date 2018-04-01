@@ -215,7 +215,7 @@ def doCameraMovement(camera=Camera(), delta_time=0.0):
     if (keys[glfw.KEY_A] == 1):
         camera.process_keyboard("left", delta_time)
     if (keys[glfw.KEY_S] == 1):
-        camera.process_keyboard("backward", delta_time)
+        camera.  process_keyboard("backward", delta_time)
     if (keys[glfw.KEY_D] == 1):
         camera.process_keyboard("right", delta_time)
     if (keys[glfw.KEY_Q] == 1):
@@ -617,12 +617,23 @@ def main():
 
         cm_change_counter += 1
 
+        glUniform1i(cm_program.uniformLocation("cm_switch"), False)
+
         glUniform1i(cm_program.uniformLocation("tex"), 1)
         glUniformMatrix4fv(cm_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
         glUniformMatrix4fv(cm_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
         glUniformMatrix4fv(cm_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
         glBindVertexArray(cm_vao)
         glDrawElements(GL_TRIANGLE_STRIP, ind_cm, GL_UNSIGNED_INT, None)
+
+        # draw second animated hdr on the same shader
+        model = translateM4x4(np.array([2.5 * surface_size, 0.0, -2.5 * surface_size]))
+        glUniformMatrix4fv(cm_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
+        glUniform1i(cm_program.uniformLocation("cm_switch"), True)
+        glDrawElements(GL_TRIANGLE_STRIP, ind_cm, GL_UNSIGNED_INT, None)
+
+
+
 
         cm_program.unbindProgram()
 
