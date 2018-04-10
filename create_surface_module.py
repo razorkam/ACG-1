@@ -66,11 +66,118 @@ def create_surface(rows, cols, size, fun, gen_textures,gen_relief = False):
                             if 2*radius ** 2 - ((z - iz) ** 2 + (x - ix) ** 2) > vertices_list_twodimensional[iz][ix][1]**(2):
                                 vertices_list_twodimensional[iz][ix][1] = (2*radius ** 2 - ((z - iz) ** 2 + (x - ix) ** 2))**(1/2)
                             else: continue
+        v = vertices_list_twodimensional.copy()
+        vec_lines = []
+        index_lines = []
+        num = 0
+        for i in range(0, 20):
+            for z in range(0, rows-1):
+                for x in range(0, cols-1):
+                    xx = -size / 2 + x * size / cols
+                    zz = -size / 2 + z * size / rows
+
+                    if v[z][x][1] < i and v[z][x + 1][1] < i and v[z + 1][x][1] < i and v[z + 1][x + 1][1] < i or \
+                       v[z][x][1] > i and v[z][x + 1][1] > i and v[z + 1][x][1] > i and v[z + 1][x + 1][1] > i:
+                        continue
+                    elif v[z][x][1] > i and v[z][x + 1][1] < i and v[z + 1][x][1] < i and v[z + 1][x + 1][1] < i:
+                        vec_lines.append([xx+0.5, i, zz])
+                        vec_lines.append([xx, i, zz+0.5])
+                        index_lines.append(num)
+                        num +=1
+                        index_lines.append(num)
+                        num += 1
+                    elif v[z][x][1] < i and v[z][x + 1][1] > i and v[z + 1][x][1] < i and v[z + 1][x + 1][1] < i:
+                        vec_lines.append([xx + 0.5, i, zz])
+                        vec_lines.append([xx + 1, i, zz+0.5])
+                        index_lines.append(num)
+                        num += 1
+                        index_lines.append(num)
+                        num += 1
+                    elif v[z][x][1] < i and v[z][x + 1][1] < i and v[z + 1][x][1] > i and v[z + 1][x + 1][1] < i:
+                        vec_lines.append([xx + 0.5, i, zz + 1])
+                        vec_lines.append([xx, i, zz+0.5])
+                        index_lines.append(num)
+                        num += 1
+                        index_lines.append(num)
+                        num += 1
+                    elif v[z][x][1] < i and v[z][x + 1][1] < i and v[z + 1][x][1] < i and v[z + 1][x + 1][1] > i:
+                        vec_lines.append([xx + 0.5, i, zz + 1])
+                        vec_lines.append([xx + 1, i, zz+0.5])
+                        index_lines.append(num)
+                        num += 1
+                        index_lines.append(num)
+                        num += 1
+
+                    elif v[z][x][1] < i and v[z][x + 1][1] > i and v[z + 1][x][1] > i and v[z + 1][x + 1][1] > i:
+                        vec_lines.append([xx + 0.5, i, zz])
+                        vec_lines.append([xx, i, zz + 0.5])
+                        index_lines.append(num)
+                        num += 1
+                        index_lines.append(num)
+                        num += 1
+                    elif v[z][x][1] > i and v[z][x + 1][1] < i and v[z + 1][x][1] > i and v[z + 1][x + 1][1] > i:
+                        vec_lines.append([xx + 0.5, i, zz])
+                        vec_lines.append([xx + 1, i, zz + 0.5])
+                        index_lines.append(num)
+                        num += 1
+                        index_lines.append(num)
+                        num += 1
+                    elif v[z][x][1] > i and v[z][x + 1][1] > i and v[z + 1][x][1] < i and v[z + 1][x + 1][1] > i:
+                        vec_lines.append([xx + 0.5, i, zz + 1])
+                        vec_lines.append([xx, i, zz + 0.5])
+                        index_lines.append(num)
+                        num += 1
+                        index_lines.append(num)
+                        num += 1
+                    elif v[z][x][1] > i and v[z][x + 1][1] > i and v[z + 1][x][1] > i and v[z + 1][x + 1][1] < i:
+                        vec_lines.append([xx + 0.5, i, zz + 1])
+                        vec_lines.append([xx + 1, i, zz + 0.5])
+                        index_lines.append(num)
+                        num += 1
+                        index_lines.append(num)
+                        num += 1
+
+                    elif v[z][x][1] < i and v[z][x + 1][1] < i and v[z + 1][x][1] > i and v[z + 1][x + 1][1] > i or \
+                            v[z][x][1] > i and v[z][x + 1][1] > i and v[z + 1][x][1] < i and v[z + 1][x + 1][1] < i:
+                        vec_lines.append([xx, i, zz + 0.5])
+                        vec_lines.append([xx + 1, i, zz + 0.5])
+                        index_lines.append(num)
+                        num += 1
+                        index_lines.append(num)
+                        num += 1
+                    elif v[z][x][1] > i and v[z][x + 1][1] < i and v[z + 1][x][1] > i and v[z + 1][x + 1][1] < i or \
+                            v[z][x][1] < i and v[z][x + 1][1] > i and v[z + 1][x][1] < i and v[z + 1][x + 1][1] > i:
+                        vec_lines.append([xx + 0.5, i, zz])
+                        vec_lines.append([xx + 0.5, i, zz + 1])
+                        index_lines.append(num)
+                        num += 1
+                        index_lines.append(num)
+                        num += 1
+
+                    elif v[z][x][1] > i and v[z][x + 1][1] < i and v[z + 1][x][1] < i and v[z + 1][x + 1][1] > i or \
+                            v[z][x][1] < i and v[z][x + 1][1] > i and v[z + 1][x][1] > i and v[z + 1][x + 1][1] < i:
+                        vec_lines.append([xx, i, zz + 0.5])
+                        vec_lines.append([xx + 0.5, i, zz])
+                        vec_lines.append([xx + 1, i, zz + 0.5])
+                        vec_lines.append([xx + 0.5, i, zz + 1])
+                        index_lines.append(num)
+                        num += 1
+                        index_lines.append(num)
+                        num += 1
+                        index_lines.append(num)
+                        num += 1
+                        index_lines.append(num)
+                        num += 1
+
+
+
+        vector_lines = np.array(vec_lines, dtype=np.float32)
+        vector_line_indexes = np.array(index_lines, dtype=np.uint32)
+
 
         for z in range(0, rows):
             for x in range(0, cols):
                 vertices_list.append(vertices_list_twodimensional[z][x])
-
 
 
 
@@ -176,5 +283,7 @@ def create_surface(rows, cols, size, fun, gen_textures,gen_relief = False):
     glPrimitiveRestartIndex(primRestart)
 
     glBindVertexArray(0)
-
-    return (vao, indices_vec.size)
+    if gen_relief:
+        return (vao, indices_vec.size, vector_lines,vector_line_indexes)
+    else:
+        return (vao, indices_vec.size)
