@@ -22,7 +22,7 @@ from OpenGL.GL import (GL_ARRAY_BUFFER, GL_COLOR_BUFFER_BIT,
                        glVertexAttribPointer, glViewport, glPolygonMode, glUniformMatrix4fv,glUniform3fv, glBindTexture,
                        glTexImage2D,
                        glEnable, glGetError, glPrimitiveRestartIndex, glDisable, glGenTextures, glPixelStorei,
-                       glTexParameteri, glActiveTexture, glUniform1i)
+                       glTexParameteri, glActiveTexture, glUniform1i, glUniform1f)
 
 from OpenGL.arrays import ArrayDatatype
 from math import sin, sqrt, cos
@@ -511,7 +511,7 @@ def main():
     cm_shader_sources = [(GL_VERTEX_SHADER, "shaders/colormap.vert"), (GL_FRAGMENT_SHADER, "shaders/colormap.frag")]
     cm_program = ShaderProgram( cm_shader_sources )
 
-    perlin_shader_sources = [(GL_VERTEX_SHADER, "shaders/functions.vert"), (GL_FRAGMENT_SHADER, "shaders/perlin.frag")]
+    perlin_shader_sources = [(GL_VERTEX_SHADER, "shaders/perlin.vert"), (GL_FRAGMENT_SHADER, "shaders/perlin.frag")]
     perlin_program = ShaderProgram(perlin_shader_sources)
 
     check_gl_errors()
@@ -528,7 +528,8 @@ def main():
 
     hdr_textures_speed = 6
 
-
+    perlin_time = 0.0
+    perlin_time_step = 0.03
 
 
 
@@ -640,11 +641,13 @@ def main():
         glDrawElements(GL_TRIANGLE_STRIP, ind_cm, GL_UNSIGNED_INT, None)
 
         perlin_program.bindProgram()
-        # shift x,z to surface size every dfdsfdsfdsf
         model = translateM4x4(np.array([0.0, 0.0, -3.5 * surface_size]))
         glUniformMatrix4fv(perlin_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
         glUniformMatrix4fv(perlin_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
         glUniformMatrix4fv(perlin_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
+        glUniform1f(perlin_program.uniformLocation("time"), perlin_time)
+        perlin_time += perlin_time_step
+
         glBindVertexArray(perlin_vao)
         glDrawElements(GL_TRIANGLE_STRIP, ind_perlin, GL_UNSIGNED_INT, None)
 
