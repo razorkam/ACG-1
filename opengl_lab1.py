@@ -489,6 +489,7 @@ def main():
     (sphere_vao, sphere_ind) = uv_sphere(22, 11)
     (torus_vao, torus_ind) = uv_torus(5, 10, 100, 100)
     (cm_vao, ind_cm) = create_surface(100, 100, surface_size, heightmap_dummy_fun, True)
+    (perlin_vao, ind_perlin) = create_surface(100, 100, surface_size, heightmap_dummy_fun, False)
 
     fun_shader_sources = [(GL_VERTEX_SHADER, "shaders/functions.vert"), (GL_FRAGMENT_SHADER, "shaders/functions.frag")]
 
@@ -510,6 +511,9 @@ def main():
     cm_shader_sources = [(GL_VERTEX_SHADER, "shaders/colormap.vert"), (GL_FRAGMENT_SHADER, "shaders/colormap.frag")]
     cm_program = ShaderProgram( cm_shader_sources )
 
+    perlin_shader_sources = [(GL_VERTEX_SHADER, "shaders/functions.vert"), (GL_FRAGMENT_SHADER, "shaders/perlin.frag")]
+    perlin_program = ShaderProgram(perlin_shader_sources)
+
     check_gl_errors()
 
     projection = projectionMatrixTransposed(60.0, float(width) / float(height), 1, 1000.0)
@@ -523,6 +527,9 @@ def main():
     cm_change_counter = 0
 
     hdr_textures_speed = 6
+
+
+
 
 
     while not glfw.window_should_close(window):
@@ -632,10 +639,16 @@ def main():
         glUniform1i(cm_program.uniformLocation("cm_switch"), True)
         glDrawElements(GL_TRIANGLE_STRIP, ind_cm, GL_UNSIGNED_INT, None)
 
+        perlin_program.bindProgram()
+        # shift x,z to surface size every dfdsfdsfdsf
+        model = translateM4x4(np.array([0.0, 0.0, -3.5 * surface_size]))
+        glUniformMatrix4fv(perlin_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
+        glUniformMatrix4fv(perlin_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
+        glUniformMatrix4fv(perlin_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
+        glBindVertexArray(perlin_vao)
+        glDrawElements(GL_TRIANGLE_STRIP, ind_perlin, GL_UNSIGNED_INT, None)
 
-
-
-        cm_program.unbindProgram()
+        perlin_program.unbindProgram()
 
         glfw.swap_buffers(window)
 
