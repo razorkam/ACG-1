@@ -492,7 +492,7 @@ def main():
     (sphere_vao, sphere_ind) = uv_sphere(22, 11)
     (torus_vao, torus_ind) = uv_torus(5, 10, 100, 100)
     (cm_vao, ind_cm) = create_surface(100, 100, surface_size, heightmap_dummy_fun, True)
-    cloud_vao, points_count = read_ply()
+    (cloud_vao, points_count) = read_ply()
     (perlin_vao, ind_perlin) = create_surface(100, 100, surface_size, heightmap_dummy_fun, False)
 
     fun_shader_sources = [(GL_VERTEX_SHADER, "shaders/functions.vert"), (GL_FRAGMENT_SHADER, "shaders/functions.frag")]
@@ -517,6 +517,9 @@ def main():
 
     perlin_shader_sources = [(GL_VERTEX_SHADER, "shaders/perlin.vert"), (GL_FRAGMENT_SHADER, "shaders/perlin.frag")]
     perlin_program = ShaderProgram(perlin_shader_sources)
+
+    cloud_shader_sources = [(GL_VERTEX_SHADER, "shaders/ply.vert"), (GL_FRAGMENT_SHADER, "shaders/ply.frag")]
+    cloud_program = ShaderProgram(cloud_shader_sources)
 
     check_gl_errors()
 
@@ -576,11 +579,15 @@ def main():
         glBindVertexArray(fun_vao3)
         glDrawElements(GL_TRIANGLE_STRIP, ind_fun3, GL_UNSIGNED_INT, None)
 
+        cloud_program.bindProgram()
 
-
-        model = translateM4x4(np.array([-1.5*surface_size,0.0 ,0.0 ]))
-        glUniform3fv(fun_program.uniformLocation("col"), 1, [0.0, 1.0, 0])
-        glUniformMatrix4fv(fun_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
+        translate_cloud = translateM4x4(np.array([-2.5*surface_size,0.0 ,0.0 ]))
+        # rotate_cloud = rotateYM4x4(math.radians(180))
+        model = translate_cloud
+        # glUniform3fv(fun_program.uniformLocation("col"), 1, [0.0, 1.0, 0])
+        glUniformMatrix4fv(cloud_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
+        glUniformMatrix4fv(cloud_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
+        glUniformMatrix4fv(cloud_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
         glBindVertexArray(cloud_vao)
         glDrawArrays(GL_POINTS, 0, points_count)
 
