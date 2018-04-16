@@ -1,9 +1,10 @@
 import glfw
 import math
+from CloudPly import read_ply
 import numpy as np
 from PIL import Image
-#import OpenEXR, Imath
-from OpenGL.GL import (GL_ARRAY_BUFFER, GL_COLOR_BUFFER_BIT,
+import OpenEXR, Imath
+from OpenGL.GL import (GL_ARRAY_BUFFER, GL_COLOR_BUFFER_BIT,GL_POINTS,
                        GL_FALSE, GL_FLOAT, GL_FRAGMENT_SHADER, GL_RENDERER, GL_SHADING_LANGUAGE_VERSION,
                        GL_UNSIGNED_INT, GL_RGBA, GL_RGBA32F, GL_RGB32F,
                        GL_STATIC_DRAW, GL_TRIANGLES, GL_TRUE, GL_VENDOR, GL_VERSION, GL_ELEMENT_ARRAY_BUFFER,
@@ -99,27 +100,27 @@ def read_texture(filename):
     is_hdr = False
     size = ()
 
-    # if OpenEXR.isOpenExrFile(filename):
-    #     is_hdr = True
-    #     img = OpenEXR.InputFile(filename)
-    #     FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
-    #     (r, g, b) = ( img.channel(chan, FLOAT) for chan in ('R', 'G', 'B'))
-    #     dw = img.header()['dataWindow']
-    #     size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
-    #
-    #     r_data = np.fromstring(r, dtype=np.float32)
-    #     g_data = np.fromstring(g, dtype=np.float32)
-    #     b_data = np.fromstring(b, dtype=np.float32)
-    #
-    #     image_data = np.dstack((r_data, g_data, b_data))
-    #     img.close()
-    #
-    # else:
-    try:
-        image = Image.open(filename)
-    except IOError as ex:
-        print('IOError: failed to open texture file %s' % filename)
-        return -1
+    if OpenEXR.isOpenExrFile(filename):
+        is_hdr = True
+        img = OpenEXR.InputFile(filename)
+        FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
+        (r, g, b) = ( img.channel(chan, FLOAT) for chan in ('R', 'G', 'B'))
+        dw = img.header()['dataWindow']
+        size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
+
+        r_data = np.fromstring(r, dtype=np.float32)
+        g_data = np.fromstring(g, dtype=np.float32)
+        b_data = np.fromstring(b, dtype=np.float32)
+
+        image_data = np.dstack((r_data, g_data, b_data))
+        img.close()
+
+    else:
+        try:
+            image = Image.open(filename)
+        except IOError as ex:
+            print('IOError: failed to open texture file %s' % filename)
+            return -1
     print('opened file: size=', image.size, 'format=', image.format)
     image_data = np.array(list(image.getdata()), np.uint8)
     size = image.size
@@ -136,10 +137,10 @@ def read_texture(filename):
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
 
-    # if is_hdr:
-    #     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, size[0], size[1], 0, GL_RGB, GL_FLOAT, image_data)
-    # else:
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size[0], size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, image_data)
+    if is_hdr:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, size[0], size[1], 0, GL_RGB, GL_FLOAT, image_data)
+    else:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size[0], size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, image_data)
 
     return texture_id
 
@@ -490,6 +491,7 @@ def main():
     (sphere_vao, sphere_ind) = uv_sphere(22, 11)
     (torus_vao, torus_ind) = uv_torus(5, 10, 100, 100)
     (cm_vao, ind_cm) = create_surface(100, 100, surface_size, heightmap_dummy_fun, True)
+    cloud_vao, points_count = read_ply()
 
     fun_shader_sources = [(GL_VERTEX_SHADER, "shaders/functions.vert"), (GL_FRAGMENT_SHADER, "shaders/functions.frag")]
 
@@ -564,6 +566,14 @@ def main():
         glUniformMatrix4fv(fun_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
         glBindVertexArray(fun_vao3)
         glDrawElements(GL_TRIANGLE_STRIP, ind_fun3, GL_UNSIGNED_INT, None)
+
+
+
+        model = translateM4x4(np.array([-1.5*surface_size,0.0 ,0.0 ]))
+        glUniform3fv(fun_program.uniformLocation("col"), 1, [0.0, 1.0, 0])
+        glUniformMatrix4fv(fun_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
+        glBindVertexArray(cloud_vao)
+        glDrawArrays(GL_POINTS, 0, points_count)
 
         sphere_program.bindProgram()
 
