@@ -23,6 +23,7 @@ from OpenGL.GL import (GL_ARRAY_BUFFER, GL_COLOR_BUFFER_BIT,GL_POINTS,
                        glVertexAttribPointer, glViewport, glPolygonMode, glUniformMatrix4fv,glUniform3fv, glBindTexture,
                        glTexImage2D,
                        glEnable, glGetError, glPrimitiveRestartIndex, glDisable, glGenTextures, glPixelStorei,
+                       glTexParameteri, glActiveTexture, glUniform1i, glUniform1f,
                        glTexParameteri, glActiveTexture, glUniform1i, glBegin, glEnd, glVertex3f,glColor3f,glLineWidth,
                        glFlush)
 
@@ -121,10 +122,10 @@ def read_texture(filename):
         except IOError as ex:
             print('IOError: failed to open texture file %s' % filename)
             return -1
-    print('opened file: size=', image.size, 'format=', image.format)
-    image_data = np.array(list(image.getdata()), np.uint8)
-    size = image.size
-    image.close()
+        print('opened file: size=', image.size, 'format=', image.format)
+        image_data = np.array(list(image.getdata()), np.uint8)
+        size = image.size
+        image.close()
 
 
     texture_id= glGenTextures(1)
@@ -492,6 +493,7 @@ def main():
     (torus_vao, torus_ind) = uv_torus(5, 10, 100, 100)
     (cm_vao, ind_cm) = create_surface(100, 100, surface_size, heightmap_dummy_fun, True)
     cloud_vao, points_count = read_ply()
+    (perlin_vao, ind_perlin) = create_surface(100, 100, surface_size, heightmap_dummy_fun, False)
 
     fun_shader_sources = [(GL_VERTEX_SHADER, "shaders/functions.vert"), (GL_FRAGMENT_SHADER, "shaders/functions.frag")]
 
@@ -513,6 +515,9 @@ def main():
     cm_shader_sources = [(GL_VERTEX_SHADER, "shaders/colormap.vert"), (GL_FRAGMENT_SHADER, "shaders/colormap.frag")]
     cm_program = ShaderProgram( cm_shader_sources )
 
+    perlin_shader_sources = [(GL_VERTEX_SHADER, "shaders/perlin.vert"), (GL_FRAGMENT_SHADER, "shaders/perlin.frag")]
+    perlin_program = ShaderProgram(perlin_shader_sources)
+
     check_gl_errors()
 
     projection = projectionMatrixTransposed(60.0, float(width) / float(height), 1, 1000.0)
@@ -526,6 +531,10 @@ def main():
     cm_change_counter = 0
 
     hdr_textures_speed = 6
+
+    perlin_time = 0.0
+    perlin_time_step = 0.03
+
 
 
     while not glfw.window_should_close(window):
@@ -648,6 +657,8 @@ def main():
 
         cm_change_counter += 1
 
+        glUniform1i(cm_program.uniformLocation("cm_switch"), False)
+
         glUniform1i(cm_program.uniformLocation("tex"), 1)
         glUniformMatrix4fv(cm_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
         glUniformMatrix4fv(cm_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
@@ -655,7 +666,24 @@ def main():
         glBindVertexArray(cm_vao)
         glDrawElements(GL_TRIANGLE_STRIP, ind_cm, GL_UNSIGNED_INT, None)
 
-        cm_program.unbindProgram()
+        # draw second animated hdr on the same shader
+        model = translateM4x4(np.array([2.5 * surface_size, 0.0, -2.5 * surface_size]))
+        glUniformMatrix4fv(cm_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
+        glUniform1i(cm_program.uniformLocation("cm_switch"), True)
+        glDrawElements(GL_TRIANGLE_STRIP, ind_cm, GL_UNSIGNED_INT, None)
+
+        perlin_program.bindProgram()
+        model = translateM4x4(np.array([0.0, 0.0, -3.5 * surface_size]))
+        glUniformMatrix4fv(perlin_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
+        glUniformMatrix4fv(perlin_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
+        glUniformMatrix4fv(perlin_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
+        glUniform1f(perlin_program.uniformLocation("time"), perlin_time)
+        perlin_time += perlin_time_step
+
+        glBindVertexArray(perlin_vao)
+        glDrawElements(GL_TRIANGLE_STRIP, ind_perlin, GL_UNSIGNED_INT, None)
+
+        perlin_program.unbindProgram()
 
         glfw.swap_buffers(window)
 
