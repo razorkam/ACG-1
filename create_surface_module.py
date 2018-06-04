@@ -10,6 +10,7 @@ from OpenGL.GL import (GL_ARRAY_BUFFER,
                        glEnable, glPrimitiveRestartIndex)
 from light_math import normalize
 from random import randint
+import math
 
 def create_surface(rows, cols, size, fun, gen_textures,gen_relief = False):
 
@@ -232,6 +233,24 @@ def create_surface(rows, cols, size, fun, gen_textures,gen_relief = False):
 
     glEnable(GL_PRIMITIVE_RESTART)
     glPrimitiveRestartIndex(primRestart)
+
+    # der_z_y = lambda x,y,z: z * math.cos(y)
+    # der_y_z = lambda x,y,z: y * math.cos(z)
+    # der_x_z = lambda x,y,z: x * math.cos(z)
+    # der_z_x = lambda x,y,z: z * math.cos(x)
+    # der_y_x = lambda x,y,z: y * math.cos(x)
+    # der_x_y = lambda x,y,z: x * math.cos(y)
+    # rot = lambda x,y,z: math.sqrt( (der_z_y(x,y,z) - der_y_z(x,y,z))**2 + (der_x_z(x,y,z) - der_z_x(x,y,z))**2 + (der_y_x(x,y,z) - der_x_y(x,y,z))**2 )
+    #
+    # # max and min of rot lengths
+    # max_rot = 0
+    # min_rot = 0
+    # rott_lst = []
+    # for i in vertices_list:
+    #
+    #     rott = rot(i[0], i[1], i[2])
+    #     rott_lst.append(rott)
+
 
     glBindVertexArray(0)
     if gen_relief:

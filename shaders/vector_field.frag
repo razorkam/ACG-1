@@ -6,11 +6,13 @@ in vec3 vNormal;
 out vec4 color;
 
 //uniform sampler2D tex;
-//uniform bool cm_switch;
+uniform bool cm_switch;
 
 
 const float min_div = 0.0;
 const float max_div = 3.0;
+const float min_rot = 0.0;
+const float max_rot = 57.443478254809314; // precomputed
 
 
 
@@ -21,11 +23,13 @@ const float max_div = 3.0;
 float vfield_i_der( float x, float y, float z ) // dfx/dx
 {
     return cos(x) + sin(y) + sin(z);
+//    return x + y + z;
 }
 
 float vfield_j_der( float x, float y, float z ) //dfy/dy
 {
     return sin(x) + cos(y) + sin(z);
+//    return x - y - z;
 }
 
 float vfield_k_der( float x, float y, float z ) // dfz/dz
@@ -118,19 +122,22 @@ void main()
 {
   vec3 lightDir = vec3(1.0f, 1.0f, 0.0f);
 
-//  vec3 sampled = texture(tex, vTexCoords).rgb;
-//  float grayscale = 0.299f*sampled.r + 0.587f*sampled.g + 0.114*sampled.b;
-
   vec4 col;
 
 
 
   // y always == 0 ( 2d slice of 3d field )
-  float div = divergence( vFragPosition.x, vFragPosition.z, vFragPosition.y );
-
-  float normalized_div = (div - min_div) / (max_div - min_div);
-// div should be normalized in [0;1]
-  col = colormap( div );
+  if ( cm_switch )
+  {
+       float div = divergence( vFragPosition.x, vFragPosition.z, vFragPosition.y );
+       float normalized_div = (div - min_div) / (max_div - min_div);
+       col = colormap( normalized_div );
+  } else
+  {
+        float rot = rot_magnitude( vFragPosition.x, vFragPosition.z, vFragPosition.y );
+        float normalized_rm = (rot - min_rot) / (max_rot - min_rot);
+        col = colormap( normalized_rm );
+  }
 
   float kd = max(dot(vNormal, lightDir), 0.0);
 

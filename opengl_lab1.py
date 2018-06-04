@@ -522,7 +522,7 @@ def main():
     cloud_shader_sources = [(GL_VERTEX_SHADER, "shaders/ply.vert"), (GL_FRAGMENT_SHADER, "shaders/ply.frag")]
     cloud_program = ShaderProgram(cloud_shader_sources)
 
-    vf_shader_sources = [(GL_VERTEX_SHADER, "shaders/vf.vert"), (GL_FRAGMENT_SHADER, "shaders/vf.frag")]
+    vf_shader_sources = [(GL_VERTEX_SHADER, "shaders/vector_field.vert"), (GL_FRAGMENT_SHADER, "shaders/vector_field.frag")]
     vf_program = ShaderProgram(vf_shader_sources)
 
 
@@ -701,7 +701,13 @@ def main():
         glUniformMatrix4fv(vf_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
         glUniformMatrix4fv(vf_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
         glUniformMatrix4fv(vf_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
+        glUniform1i(vf_program.uniformLocation("cm_switch"), True)
         glBindVertexArray(div_vao)
+        glDrawElements(GL_TRIANGLE_STRIP, ind_div, GL_UNSIGNED_INT, None)
+
+        glUniform1i(vf_program.uniformLocation("cm_switch"), False)
+        model = translateM4x4(np.array([1.0 * surface_size, 0.0, -6.5 * surface_size]))
+        glUniformMatrix4fv(vf_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
         glDrawElements(GL_TRIANGLE_STRIP, ind_div, GL_UNSIGNED_INT, None)
 
         vf_program.unbindProgram()
