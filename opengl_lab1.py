@@ -421,6 +421,119 @@ def uv_torus(inner_radius, outer_radius, num_sides, num_faces):
     return (vao, indices_vec.size)
 
 
+def simple_cube():
+    vertices_list = [
+        [-1.0, -1.0, -1.0],
+        [-1.0, -1.0, +1.0],
+        [1.0, -1.0, +1.0],
+        [+1.0, -1.0, -1.0],
+
+        [-1.0, +1.0, -1.0],
+        [-1.0, +1.0, +1.0],
+        [+1.0, +1.0, +1.0],
+        [+1.0, +1.0, -1.0],
+
+        [-1.0, -1.0, -1.0],
+        [-1.0, +1.0, -1.0],
+        [+1.0, +1.0, -1.0],
+        [+1.0, -1.0, -1.0],
+
+        [-1.0, -1.0, +1.0],
+        [-1.0, +1.0, +1.0],
+        [+1.0, +1.0, +1.0],
+        [+1.0, -1.0, +1.0],
+
+        [-1.0, -1.0, -1.0],
+        [-1.0, -1.0, +1.0],
+        [-1.0, +1.0, +1.0],
+        [-1.0, +1.0, -1.0],
+
+        [+1.0, -1.0, -1.0],
+        [1.0, -1.0, +1.0],
+        [+1.0, +1.0, +1.0],
+        [1.0, +1.0, -1.0]
+    ]
+
+    normal_list = [
+        [0.0, -1.0, 0.0],
+        [0.0, -1.0, 0.0],
+        [0.0, -1.0, 0.0],
+        [0.0, -1.0, 0.0],
+
+        [0.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+
+        [0.0, 0.0, -1.0],
+        [0.0, 0.0, -1.0],
+        [0.0, 0.0, -1.0],
+        [0.0, 0.0, -1.0],
+
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 1.0],
+
+        [-1.0, 0.0, 0.0],
+        [-1.0, 0.0, 0.0],
+        [-1.0, 0.0, 0.0],
+        [-1.0, 0.0, 0.0],
+
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+    ]
+
+    indices_list = [
+        0, 2, 1,
+        0, 3, 2,
+
+        4, 5, 6,
+        4, 6, 7,
+
+        # 8, 9, 10,
+        # 8, 10, 11,
+
+        12, 15, 14,
+        12, 14, 13,
+
+        16, 17, 18,
+        16, 18, 19,
+
+        20, 23, 22,
+        20, 22, 21
+    ]
+
+
+
+    vertices_vec = np.array(vertices_list, dtype=np.float32)
+    indices_vec = np.array(indices_list, dtype=np.uint32)
+    normals_vec = np.array(normal_list, dtype=np.float32)
+
+    vao = glGenVertexArrays(1)
+    vbo_vertices = glGenBuffers(1)
+    vbo_indices = glGenBuffers(1)
+    vbo_normals = glGenBuffers(1)
+
+    glBindVertexArray(vao)
+
+    bind_buffer(vbo_vertices, vertices_vec, vbo_normals, normals_vec, vbo_indices, indices_vec)
+
+    glBindVertexArray(0)
+
+    return vao, indices_vec.size
+
+
+
+
+
+
+
+
+
+
 def read_cm_textures(hdr_textures_amount):
 
     prefix = 'hdr_image_data/00'
@@ -495,6 +608,7 @@ def main():
     (cloud_vao, points_count) = read_ply()
     (perlin_vao, ind_perlin) = create_surface(100, 100, surface_size, heightmap_dummy_fun, False)
     (div_vao, ind_div) = create_surface(100, 100, surface_size, heightmap_dummy_fun, False)
+    (traj_vao, ind_traj) = simple_cube()
 
     fun_shader_sources = [(GL_VERTEX_SHADER, "shaders/functions.vert"), (GL_FRAGMENT_SHADER, "shaders/functions.frag")]
 
@@ -525,6 +639,11 @@ def main():
     vf_shader_sources = [(GL_VERTEX_SHADER, "shaders/vector_field.vert"), (GL_FRAGMENT_SHADER, "shaders/vector_field.frag")]
     vf_program = ShaderProgram(vf_shader_sources)
 
+    traj_shader_sources = [(GL_VERTEX_SHADER, "shaders/trajectory.vert"),
+                         (GL_FRAGMENT_SHADER, "shaders/trajectory.frag")]
+
+    traj_program = ShaderProgram(traj_shader_sources)
+
 
 
     check_gl_errors()
@@ -545,6 +664,11 @@ def main():
     perlin_time_step = 0.03
 
 
+    cube_multiplier = 1.0
+    cube_edge_length = 2.0 * cube_multiplier
+    offset = cube_edge_length / 10
+    left_cube_pos = -25 * cube_edge_length
+    cube_steps = -left_cube_pos / offset - 10
 
     while not glfw.window_should_close(window):
         current_frame = glfw.get_time()
@@ -710,7 +834,35 @@ def main():
         glUniformMatrix4fv(vf_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
         glDrawElements(GL_TRIANGLE_STRIP, ind_div, GL_UNSIGNED_INT, None)
 
-        vf_program.unbindProgram()
+
+        traj_program.bindProgram()
+
+        cube_scale_ = scaleM4x4(np.array([1.0, 1.0, 1.0]))
+
+        left_cube_pos += offset
+
+        left_translation = translateM4x4(np.array([left_cube_pos, 0.0, -7.5 * surface_size]))
+        glUniformMatrix4fv(traj_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(left_translation).flatten())
+        glUniformMatrix4fv(traj_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
+        glUniformMatrix4fv(traj_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
+
+        glBindVertexArray(traj_vao)
+        glDrawElements(GL_TRIANGLE_STRIP, ind_traj, GL_UNSIGNED_INT, None)
+
+        right_translation = translateM4x4(np.array([-left_cube_pos, 0.0, -7.5 * surface_size]))
+        glUniformMatrix4fv(traj_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(right_translation).flatten())
+        glDrawElements(GL_TRIANGLE_STRIP, ind_traj, GL_UNSIGNED_INT, None)
+
+
+
+
+
+        if not cm_change_counter % cube_steps:
+            # left_cube_pos = left_cube_pos + offset * (cube_steps-1)
+            offset *= -1
+
+
+        traj_program.unbindProgram()
 
         glfw.swap_buffers(window)
 
