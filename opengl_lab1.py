@@ -15,7 +15,7 @@ from OpenGL.GL import (GL_ARRAY_BUFFER, GL_COLOR_BUFFER_BIT,GL_POINTS,
                        GL_NO_ERROR, GL_INVALID_ENUM, GL_INVALID_VALUE, GL_INVALID_OPERATION, GL_STACK_OVERFLOW,
                        GL_TEXTURE_2D, GL_TEXTURE0, GL_TEXTURE1,GL_LINE,
                        GL_STACK_UNDERFLOW, GL_OUT_OF_MEMORY, GL_TABLE_TOO_LARGE, GL_PRIMITIVE_RESTART,
-                       GL_TRIANGLE_STRIP, GL_TRIANGLE_FAN, GL_RGB, GL_UNSIGNED_BYTE,
+                       GL_TRIANGLE_STRIP, GL_LINE_STRIP, GL_TRIANGLE_FAN, GL_RGB, GL_UNSIGNED_BYTE,
                        glAttachShader, glBindBuffer, glBindVertexArray, glDrawElements,
                        glBufferData, glClear, glClearColor, glDrawArrays, glEnableVertexAttribArray,
                        glGenBuffers, glGenVertexArrays, glGetAttribLocation, glDeleteVertexArrays,
@@ -25,7 +25,7 @@ from OpenGL.GL import (GL_ARRAY_BUFFER, GL_COLOR_BUFFER_BIT,GL_POINTS,
                        glEnable, glGetError, glPrimitiveRestartIndex, glDisable, glGenTextures, glPixelStorei,
                        glTexParameteri, glActiveTexture, glUniform1i, glUniform1f,
                        glTexParameteri, glActiveTexture, glUniform1i, glBegin, glEnd, glVertex3f,glColor3f,glLineWidth,
-                       glFlush)
+                       glFlush, glPointSize)
 
 from OpenGL.arrays import ArrayDatatype
 from math import sin, sqrt, cos
@@ -664,11 +664,16 @@ def main():
     perlin_time_step = 0.03
 
 
-    traj_points_count = 10
+
     cube_multiplier = 1.0
     cube_center = [0.0, 0.0, 0.0]
     traj_points_list = [ cube_center ]
     cube_edge_length = 2.0 * cube_multiplier
+
+    offset = cube_edge_length / 10
+    left_cube_pos = -25 * cube_edge_length
+    cube_steps = -left_cube_pos / offset - 10
+    traj_points_count = int(cube_steps)
 
 
     for i in range(traj_points_count):
@@ -676,9 +681,7 @@ def main():
 
     traj_part_index = 0
 
-    offset = cube_edge_length / 10
-    left_cube_pos = -25 * cube_edge_length
-    cube_steps = -left_cube_pos / offset - 10
+
 
     while not glfw.window_should_close(window):
         current_frame = glfw.get_time()
@@ -856,13 +859,14 @@ def main():
             for traj_coords in r_traj_part:
                 l_traj_part.append( [-x for x in traj_coords] )
         else:
-            traj_part_index = int(cm_change_counter % cube_steps)
+            traj_part_index = int(traj_points_count - cm_change_counter % cube_steps)
+            # traj_part_index = int(cm_change_counter % cube_steps)
             l_traj_part = traj_points_list[0:traj_part_index]
             for traj_coords in l_traj_part:
                 r_traj_part.append([-x for x in traj_coords])
 
-        l_traj_vec = np.array(l_traj_part, dtype=np.uint32)
-        r_traj_vec = np.array(r_traj_part, dtype=np.uint32)
+        l_traj_vec = np.array(l_traj_part, dtype=np.float32)
+        r_traj_vec = np.array(r_traj_part, dtype=np.float32)
 
         indices_list = [i for i in range(len(r_traj_part))]
         indices_vec = np.array(indices_list, dtype=np.uint32)
@@ -875,6 +879,7 @@ def main():
         right_traj_indices = glGenBuffers(1)
 
         glBindVertexArray(left_traj_vao)
+        glPointSize( 3.0 )
 
         glBindBuffer(GL_ARRAY_BUFFER, left_traj_vertices)
         glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(l_traj_vec), l_traj_vec.flatten(),
@@ -890,16 +895,18 @@ def main():
 
         glBindVertexArray(right_traj_vao)
 
-        glBindBuffer(GL_ARRAY_BUFFER, right_traj_indices)
-        glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(l_traj_vec), r_traj_vec.flatten(),
+        glBindBuffer(GL_ARRAY_BUFFER, right_traj_vertices)
+        glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(r_traj_vec), r_traj_vec.flatten(),
                      GL_STATIC_DRAW)
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
         glEnableVertexAttribArray(0)
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, left_traj_indices)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, right_traj_indices)
 
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(indices_vec), indices_vec.flatten(),
                      GL_STATIC_DRAW)
+
+        glBindVertexArray(0)
 
 
 
@@ -914,18 +921,18 @@ def main():
         glUniformMatrix4fv(traj_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
 
         glBindVertexArray(left_traj_vao)
-        glDrawElements(GL_TRIANGLE_STRIP, indices_vec.size, GL_UNSIGNED_INT, None)
+        glDrawElements(GL_LINE_STRIP, indices_vec.size, GL_UNSIGNED_INT, None)
 
         glBindVertexArray(traj_vao)
         glDrawElements(GL_TRIANGLE_STRIP, ind_traj, GL_UNSIGNED_INT, None)
 
-        right_translation = translateM4x4(np.array([-left_cube_pos, 0.0, -7.5 * surface_size]))
+        right_translation = translateM4x4(np.array([-left_cube_pos, 0.0, -8.5 * surface_size]))
         glUniformMatrix4fv(traj_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(right_translation).flatten())
         glDrawElements(GL_TRIANGLE_STRIP, ind_traj, GL_UNSIGNED_INT, None)
 
 
         glBindVertexArray(right_traj_vao)
-        glDrawElements(GL_TRIANGLE_STRIP, indices_vec.size, GL_UNSIGNED_INT, None)
+        glDrawElements(GL_LINE_STRIP, indices_vec.size, GL_UNSIGNED_INT, None)
 
 
 
