@@ -8,7 +8,7 @@ from OpenGL.GL import (GL_ARRAY_BUFFER, GL_COLOR_BUFFER_BIT,GL_POINTS,
                        GL_FALSE, GL_FLOAT, GL_FRAGMENT_SHADER, GL_RENDERER, GL_SHADING_LANGUAGE_VERSION,
                        GL_UNSIGNED_INT, GL_RGBA, GL_RGBA32F, GL_RGB32F,
                        GL_STATIC_DRAW, GL_TRIANGLES, GL_TRUE, GL_VENDOR, GL_VERSION, GL_ELEMENT_ARRAY_BUFFER,
-                       GL_TEXTURE_BASE_LEVEL, GL_VERTEX_SHADER,
+                       GL_TEXTURE_BASE_LEVEL, GL_VERTEX_SHADER, GL_GEOMETRY_SHADER,
                        GL_DEPTH_TEST, GL_DEPTH_BUFFER_BIT, GL_FRONT_AND_BACK, GL_FILL, GL_LINES, GL_UNPACK_ALIGNMENT,
                        GL_TEXTURE_MAX_LEVEL, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR,
                        GL_LINEAR, GL_REPEAT, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T,
@@ -29,6 +29,7 @@ from OpenGL.GL import (GL_ARRAY_BUFFER, GL_COLOR_BUFFER_BIT,GL_POINTS,
 
 from OpenGL.arrays import ArrayDatatype
 from math import sin, sqrt, cos
+from grad import create_grad
 
 from shader_program import ShaderProgram
 from camera import Camera
@@ -347,7 +348,7 @@ def uv_sphere( mers, pars ):
 
     glBindVertexArray(0)
 
-    return (vao, indices_vec.size)
+    return (vao, indices_vec.size, normals_vec)
 
 def uv_torus(inner_radius, outer_radius, num_sides, num_faces):
     vertices_list = []
@@ -600,9 +601,10 @@ def main():
     (fun_vao1, ind_fun1) = create_surface(100, 100, surface_size, fun1, False)
     (fun_vao2, ind_fun2) = create_surface(100, 100, surface_size, fun2, False)
     (fun_vao3, ind_fun3) = create_surface(100, 100, surface_size, fun3, False)
+    (grad_vao, grad_point_count) = create_grad(100, 100, surface_size)
     (contour_plot_vao, ind_con, vec_lines, vector_line_indexes) = create_surface(100, 100, surface_size, 0, False, True)
     (heightmap_vao, ind_hm) = create_surface(100,100, surface_size, heightmap_dummy_fun, True)
-    (sphere_vao, sphere_ind) = uv_sphere(22, 11)
+    (sphere_vao, sphere_ind, normals_for_glyph) = uv_sphere(22, 11)
     (torus_vao, torus_ind) = uv_torus(5, 10, 100, 100)
     (cm_vao, ind_cm) = create_surface(100, 100, surface_size, heightmap_dummy_fun, True)
     (cloud_vao, points_count) = read_ply()
@@ -626,6 +628,12 @@ def main():
 
     sphere_shader_sources = [(GL_VERTEX_SHADER, "shaders/sphere.vert"), (GL_FRAGMENT_SHADER, "shaders/sphere.frag")]
     sphere_program = ShaderProgram(sphere_shader_sources)
+
+    glyph_shader_sources = [(GL_VERTEX_SHADER, "shaders/glyph.vert"), (GL_GEOMETRY_SHADER, "shaders/glyph.geom"), (GL_FRAGMENT_SHADER, "shaders/glyph.frag")]
+    glyph_program = ShaderProgram(glyph_shader_sources)
+
+    grad_shader_sources = [(GL_VERTEX_SHADER, "shaders/grad.vert"), (GL_GEOMETRY_SHADER, "shaders/grad.geom"), (GL_FRAGMENT_SHADER, "shaders/grad.frag")]
+    grad_program = ShaderProgram(grad_shader_sources)
 
     cm_shader_sources = [(GL_VERTEX_SHADER, "shaders/colormap.vert"), (GL_FRAGMENT_SHADER, "shaders/colormap.frag")]
     cm_program = ShaderProgram( cm_shader_sources )
@@ -751,6 +759,26 @@ def main():
         glBindVertexArray(torus_vao)
         glDrawElements(GL_TRIANGLES, torus_ind, GL_UNSIGNED_INT, None)
 
+        glyph_program.bindProgram()
+        sph_scale = scaleM4x4(np.array([sphere_radius, sphere_radius, sphere_radius]))
+        sph_translate = translateM4x4(np.array([0.0, 0.0, 2.0 * surface_size]))
+
+        glUniformMatrix4fv(glyph_program.uniformLocation("model"), 1, GL_FALSE,
+                           np.transpose(sph_translate + sph_scale).flatten())
+        glUniformMatrix4fv(glyph_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
+        glUniformMatrix4fv(glyph_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
+
+        vao = glGenVertexArrays(1)
+        glBindVertexArray(vao)
+        vbo = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, vbo)
+        glBufferData(GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(normals_for_glyph), normals_for_glyph.flatten(),
+                     GL_STATIC_DRAW)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+        glEnableVertexAttribArray(0)
+        glDrawArrays(GL_POINTS, 0, 10000)
+        glBindVertexArray(0)
+
         contour_plot_program.bindProgram()
 
         model = translateM4x4(np.array([-1.5 * surface_size, 0.0, -1.5 * surface_size]))
@@ -832,6 +860,14 @@ def main():
 
         glBindVertexArray(perlin_vao)
         glDrawElements(GL_TRIANGLE_STRIP, ind_perlin, GL_UNSIGNED_INT, None)
+
+        grad_program.bindProgram()
+        model = translateM4x4(np.array([-25.0, 0.0, -7.0 * surface_size]))
+        glUniformMatrix4fv(grad_program.uniformLocation("model"), 1, GL_FALSE, np.transpose(model).flatten())
+        glUniformMatrix4fv(grad_program.uniformLocation("view"), 1, GL_FALSE, np.transpose(view).flatten())
+        glUniformMatrix4fv(grad_program.uniformLocation("projection"), 1, GL_FALSE, projection.flatten())
+        glBindVertexArray(grad_vao)
+        glDrawArrays(GL_LINES, 0, grad_point_count)
 
         vf_program.bindProgram()
         model = translateM4x4(np.array([0.0, 0.0, -5.5 * surface_size]))
